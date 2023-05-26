@@ -1,6 +1,8 @@
 import http.client
 import requests
 
+from footballAPIClient.Exceptions.MissingParametersError import MissingParametersError
+
 
 class FootballAPI:
     def __init__(self,
@@ -41,7 +43,10 @@ class FootballAPI:
              type: str = None,
              current: str = None,
              search: str = None,
-             last: str = None):
+             last: str = None,
+             league: str = None,
+             venue: str = None,
+             date: str = None):
         url = f"{self.base_url}/{path}"
         headers = self.get_headers()
 
@@ -67,6 +72,12 @@ class FootballAPI:
             params['search'] = search
         if last:
             params['last'] = last
+        if league:
+            params['league'] = league
+        if venue:
+            params["venue"] = venue
+        if date:
+            params["date"] = date
 
         response_data = self._send_requests('GET', url, headers, params=params)
         return response_data
@@ -89,8 +100,51 @@ class FootballAPI:
                     current: str = None,
                     search: str = None,
                     last: str = None):
+        # SEARCH: criteria is >= 3 words
         return self._get("leagues", id, name, country, code, season, team, type, current, search, last)
 
     def get_leagues_seasons(self):
         # TO-DO: only send the Responses
         return self._get("leagues/seasons")
+
+    def get_teams_information(self, id: int = None,
+                              name: str = None,
+                              league: str = None,
+                              season: str = None,
+                              country: str = None,
+                              code: str = None,
+                              venue: str = None,
+                              search: str = None):
+        missing_params = [param_name for param_name, param_value in {
+            'id': id, 'name': name, 'league': league, 'country': country,
+            'season': season, 'code': code, 'venue': venue,
+            'search': search
+        }.items() if param_value is None]
+
+        # checks if it has atleast one params
+        if all(param is None for param in [id, name, league, country, season, code, venue,
+                                           search]):
+            raise MissingParametersError("At least one of the optional parameters is required.",
+                                         params=missing_params)
+        return self._get(path="teams", id=id, name=name, league=league, country=country,
+                         season=season, code=code, venue=venue,
+                         search=search
+                         )
+
+    def team_statistics(self, league: str,
+                        season: str,
+                        team: str,
+                        date):
+        """
+        TO-DO:  date should be of format: 'YYYY-MM-DD'
+                season of 4 character, 'YYYY'
+        -- create a helper dir to handle all this things
+        """
+        return self._get('teams/statistics', league=league, season=season, team=team, date=date)
+
+    def get_teams_seasons(self, team: str):
+        return self._get('teams/seasons', team=team)
+
+    def get_teams_country(self):
+        return self._get('teams/countries')
+
