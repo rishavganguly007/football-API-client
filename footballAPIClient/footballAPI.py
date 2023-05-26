@@ -2,11 +2,13 @@ import http.client
 import requests
 
 from footballAPIClient.Exceptions.MissingParametersError import MissingParametersError
+from footballAPIClient.helpers.ParameterValidator import ParameterValidator
 
 
 class FootballAPI:
     def __init__(self,
                  api_key: str = None):
+        self.parameter_validator = ParameterValidator()
         self.base_url: str = "http://v3.football.api-sports.io"
         self.api_key = api_key
 
@@ -38,7 +40,7 @@ class FootballAPI:
              name: str = None,
              country: str = None,
              code: str = None,
-             season: str = None,
+             season: int = None,
              team: str = None,
              type: str = None,
              current: str = None,
@@ -46,7 +48,17 @@ class FootballAPI:
              last: str = None,
              league: str = None,
              venue: str = None,
-             date: str = None):
+             date: str = None,
+             city: str = None,
+             ids: str = None,
+             live: str = None,
+             next_: int = None,
+             from_: str = None,
+             to: str = None,
+             round_: str = None,
+             status: str = None,
+             timezone: str = None
+             ):
         url = f"{self.base_url}/{path}"
         headers = self.get_headers()
 
@@ -78,6 +90,33 @@ class FootballAPI:
             params["venue"] = venue
         if date:
             params["date"] = date
+        if country:
+            params['country'] = country
+        if city:
+            params['city'] = city
+        if ids:
+            params["ids"] = ids
+
+        if live:
+            params["live"] = live
+
+        if next_:
+            params["next_"] = next_
+
+        if from_:
+            params["from_"] = from_
+
+        if to:
+            params["to"] = to
+
+        if round_:
+            params["round_"] = round_
+
+        if status:
+            params["status"] = status
+
+        if timezone:
+            params["timezone"] = timezone
 
         response_data = self._send_requests('GET', url, headers, params=params)
         return response_data
@@ -110,22 +149,21 @@ class FootballAPI:
     def get_teams_information(self, id: int = None,
                               name: str = None,
                               league: str = None,
-                              season: str = None,
+                              season: int = None,
                               country: str = None,
                               code: str = None,
                               venue: str = None,
                               search: str = None):
-        missing_params = [param_name for param_name, param_value in {
+        params = {
             'id': id, 'name': name, 'league': league, 'country': country,
             'season': season, 'code': code, 'venue': venue,
             'search': search
-        }.items() if param_value is None]
-
+        }
+        missing_params = self.parameter_validator.check_missing_params(params)
         # checks if it has atleast one params
-        if all(param is None for param in [id, name, league, country, season, code, venue,
-                                           search]):
-            raise MissingParametersError("At least one of the optional parameters is required.",
-                                         params=missing_params)
+        if missing_params:
+            raise MissingParametersError("At least one of the optional parameters is required.")
+
         return self._get(path="teams", id=id, name=name, league=league, country=country,
                          season=season, code=code, venue=venue,
                          search=search
@@ -148,3 +186,67 @@ class FootballAPI:
     def get_teams_country(self):
         return self._get('teams/countries')
 
+    def get_venues(self,
+                   id: int = None,
+                   name: str = None,
+                   city: str = None,
+                   country: str = None,
+                   search: str = None):
+        params = {
+            'id': id, 'name': name, 'city': city, 'country': country, 'search': search
+        }
+        missing_params = self.parameter_validator.check_missing_params(params)
+
+        if missing_params:
+            raise MissingParametersError("At least one of the optional parameters is required.")
+
+        return self._get('venues',
+                         id=id,
+                         name=name,
+                         city=city,
+                         country=country,
+                         search=search)
+
+    def get_standings(self,
+                      season: str,
+                      league: str = None,
+                      team: str = None):
+        return self._get('standings',
+                         league=league,
+                         season=season,
+                         team=team)
+
+    def get_fixtures(self,
+                     id: str = None,
+                     ids: str = None,  # validate: stringsMaximum of 20 fixtures ids, Value: "id-id-id"
+                     live: str = None,  # Enum: "all" "id-id"
+                     date: str = None,  # YYYY-MM-DD
+                     league: int = None,
+                     season: int = None,  # int YYYY
+                     team: int = None,
+                     last: int = None,  # <= 2 chars
+                     next_: int = None,  # <= 2 characters
+                     from_: str = None,  # stringYYYY-MM-DD
+                     to: str = None,  # stringYYYY-MM-DD
+                     round_: str = None,
+                     status: str = None,  # Enum: "NS" "NS-PST-FT"
+                     venue: str = None,
+                     timezone: str = None):
+
+        return self._get('fixtures',
+                         id=id,
+                         ids=ids,
+                         live=live,
+                         date=date,
+                         league=league,
+                         season=season,
+                         team=team,
+                         last=last,
+                         next_=next_,
+                         from_=from_,
+                         to=to,
+                         round_=round_,
+                         status=status,
+                         venue=venue,
+                         timezone=timezone
+                         )
