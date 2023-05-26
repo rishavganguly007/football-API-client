@@ -14,25 +14,83 @@ class FootballAPI:
             headers['x-apisports-key'] = self.api_key
             return headers
 
-    def _send_requests(self, method, path, data=None):
-        url = f"{self.base_url}/{path}"
-        headers = self.get_headers()
+    def _send_requests(self, method, url, headers, params=None, data=None):
+
         try:
             response = requests.request(
                 method,
                 url,
                 headers=headers,
-                data = data
+                params=params,
+                json=data
             )
             response.raise_for_status()
-            return response.json
+            # return response.json # use this
+            return response.text  # delete lter
         except requests.exceptions.RequestException as e:
             # Handle request exceptions or errors
             print(f"Request error: {e}")
             return None
 
-    def get_countries(self, params=None) :
+    def _get(self, path: str, id: str = None,
+             name: str = None,
+             country: str = None,
+             code: str = None,
+             season: str = None,
+             team: str = None,
+             type: str = None,
+             current: str = None,
+             search: str = None,
+             last: str = None):
+        url = f"{self.base_url}/{path}"
+        headers = self.get_headers()
 
-        return self._send_requests('GET', "countries")
+        # preparing the query parameter
+        params = {}
+        if id:
+            params["id"] = id
+        if name:
+            params["name"] = name
+        if code:
+            params["code"] = code
+        if search:
+            params["search"] = search
+        if season:
+            params['season'] = season
+        if team:
+            params['team'] = team
+        if type:
+            params['type'] = type
+        if current:
+            params['current'] = current
+        if search:
+            params['search'] = search
+        if last:
+            params['last'] = last
 
+        response_data = self._send_requests('GET', url, headers, params=params)
+        return response_data
 
+    def get_countries(self, name: str = None, code: str = None, search: str = None):
+
+        return self._get("countries", name, code, search)
+
+    def get_timezone(self, name: str = None, code: str = None, search: str = None):
+        # might need to add exceptions
+        return self._get("timezone")
+
+    def get_leagues(self, id: int = None,
+                    name: str = None,
+                    country: str = None,
+                    code: str = None,
+                    season: str = None,
+                    team: str = None,
+                    type: str = None,
+                    current: str = None,
+                    search: str = None,
+                    last: str = None):
+        return self._get("leagues", id, name, country, code, season, team, type, current, search, last)
+
+    def get_leagues_seasons(self):
+        # TO-DO: only send the Responses
+        return self._get("leagues/seasons")
