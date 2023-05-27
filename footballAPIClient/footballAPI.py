@@ -41,12 +41,12 @@ class FootballAPI:
              country: str = None,
              code: str = None,
              season: int = None,
-             team: str = None,
+             team: int = None,
              type: str = None,
              current: str = None,
              search: str = None,
              last: str = None,
-             league: str = None,
+             league: int = None,
              venue: str = None,
              date: str = None,
              city: str = None,
@@ -57,7 +57,10 @@ class FootballAPI:
              to: str = None,
              round_: str = None,
              status: str = None,
-             timezone: str = None
+             timezone: str = None,
+             h2h: str = None,
+             fixture: int = None,
+             player: int = None
              ):
         url = f"{self.base_url}/{path}"
         headers = self.get_headers()
@@ -101,22 +104,31 @@ class FootballAPI:
             params["live"] = live
 
         if next_:
-            params["next_"] = next_
+            params["next"] = next_
 
         if from_:
-            params["from_"] = from_
+            params["from"] = from_
 
         if to:
             params["to"] = to
 
         if round_:
-            params["round_"] = round_
+            params["round"] = round_
 
         if status:
             params["status"] = status
 
         if timezone:
             params["timezone"] = timezone
+
+        if h2h:
+            params["h2h"] = h2h
+
+        if fixture:
+            params["fixture"] = fixture
+
+        if player:
+            params["player"] = player
 
         response_data = self._send_requests('GET', url, headers, params=params)
         return response_data
@@ -148,7 +160,7 @@ class FootballAPI:
 
     def get_teams_information(self, id: int = None,
                               name: str = None,
-                              league: str = None,
+                              league: int = None,
                               season: int = None,
                               country: str = None,
                               code: str = None,
@@ -169,10 +181,10 @@ class FootballAPI:
                          search=search
                          )
 
-    def team_statistics(self, league: str,
-                        season: str,
-                        team: str,
-                        date):
+    def team_statistics(self, league: int,
+                        season: int,
+                        team: int,
+                        date: str):
         """
         TO-DO:  date should be of format: 'YYYY-MM-DD'
                 season of 4 character, 'YYYY'
@@ -180,7 +192,7 @@ class FootballAPI:
         """
         return self._get('teams/statistics', league=league, season=season, team=team, date=date)
 
-    def get_teams_seasons(self, team: str):
+    def get_teams_seasons(self, team: int):
         return self._get('teams/seasons', team=team)
 
     def get_teams_country(self):
@@ -208,8 +220,8 @@ class FootballAPI:
                          search=search)
 
     def get_standings(self,
-                      season: str,
-                      league: str = None,
+                      season: int,
+                      league: int = None,
                       team: str = None):
         return self._get('standings',
                          league=league,
@@ -250,3 +262,106 @@ class FootballAPI:
                          venue=venue,
                          timezone=timezone
                          )
+
+    def get_rounds(self,
+                   league: int,
+                   season: int,
+                   current: str # Enum: "true" "false"
+                   ):
+
+        return self._get('fixtures/rounds',
+                         league=league,
+                         season=season,
+                         current=current)
+
+    def get_head_to_head(self,
+                         h2h: str, # format: id-id
+                         date: str = None,
+                         league: int = None,
+                         season: int = None, # format: 4 chars- YYYY
+                         last: int = None,
+                         next_: int = None,
+                         from_: str = None, # format: YYYY-MM-DD
+                         to: str = None, # format: YYYY-MM-DD
+                         venue: int = None,
+                         timezone: str = None):
+        return self._get('fixtures/headtohead',
+                         h2h=h2h,
+                         date=date,
+                         league=league,
+                         season=season,
+                         last=last,
+                         next_=next_,
+                         from_=from_,
+                         to=to,
+                         venue=venue,
+                         timezone=timezone)
+
+    def get_fixture_statistics(self,
+                               fixture: int,
+                               team: int = None,
+                               type: str = None):
+
+        return self._get('fixtures/statistics',
+                         fixture=fixture,
+                         team=team,
+                         type=type)
+
+    def get_fixture_events(self,
+                           fixture: int,
+                           team: int = None,
+                           player: int = None,
+                           type: str = None):
+
+        return self._get('fixtures/events',
+                         fixture=fixture,
+                         team=team,
+                         player=player,
+                         type=type)
+
+    def get_fixture_lineups(self,
+                            fixture: int,
+                            team: int = None,
+                            player: int = None,
+                            type: str = None):
+
+        return self._get('fixtures/lineups',
+                         fixture=fixture,
+                         team=team,
+                         player=player,
+                         type=type)
+
+    def get_fixture_player_statistics(self,
+                                      fixture: int,
+                                      team: int = None):
+
+        return self._get('fixtures/players',
+                         fixture=fixture,
+                         team=team)
+
+    def get_injuries(self,
+                     league: int = None,
+                     season: int  = None, # format: 4 chars- YYYY
+                     fixture: int = None,
+                     team: int = None,
+                     player: int = None,
+                     date: str = None,
+                     timezone: str = None):
+        params = {
+            'league': league, 'season': season, 'fixture': fixture,
+            'team': team, 'player': player, 'date': date, 'timezone': timezone
+        }
+        missing_params = self.parameter_validator.check_missing_params(params)
+
+        if missing_params:
+            raise MissingParametersError("At least one of the optional parameters is required.")
+
+        return self._get('injuries',
+                         league=league,
+                         season=season,
+                         fixture=fixture,
+                         team=team,
+                         player=player,
+                         date=date,
+                         timezone=timezone)
+
