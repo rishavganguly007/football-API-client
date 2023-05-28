@@ -60,7 +60,9 @@ class FootballAPI:
              timezone: str = None,
              h2h: str = None,
              fixture: int = None,
-             player: int = None
+             player: int = None,
+             page: int = None,
+             coach: int = None
              ):
         url = f"{self.base_url}/{path}"
         headers = self.get_headers()
@@ -130,6 +132,12 @@ class FootballAPI:
         if player:
             params["player"] = player
 
+        if page:
+            params["page"] = page
+
+        if coach:
+            params["coach"] = coach
+
         response_data = self._send_requests('GET', url, headers, params=params)
         return response_data
 
@@ -166,13 +174,11 @@ class FootballAPI:
                               code: str = None,
                               venue: str = None,
                               search: str = None):
-        params = {
-            'id': id, 'name': name, 'league': league, 'country': country,
-            'season': season, 'code': code, 'venue': venue,
-            'search': search
-        }
-        missing_params = self.parameter_validator.check_missing_params(params)
-        # checks if it has atleast one params
+
+        missing_params = self.parameter_validator.check_missing_params(id, name, league, season,
+                                                                       country, code,
+                                                                       venue, search)
+        # checks if it has at least one params
         if missing_params:
             raise MissingParametersError("At least one of the optional parameters is required.")
 
@@ -204,10 +210,9 @@ class FootballAPI:
                    city: str = None,
                    country: str = None,
                    search: str = None):
-        params = {
-            'id': id, 'name': name, 'city': city, 'country': country, 'search': search
-        }
-        missing_params = self.parameter_validator.check_missing_params(params)
+
+        missing_params = self.parameter_validator.check_missing_params(id, name, city, country,
+                                                                       search)
 
         if missing_params:
             raise MissingParametersError("At least one of the optional parameters is required.")
@@ -266,7 +271,7 @@ class FootballAPI:
     def get_rounds(self,
                    league: int,
                    season: int,
-                   current: str # Enum: "true" "false"
+                   current: str  # Enum: "true" "false"
                    ):
 
         return self._get('fixtures/rounds',
@@ -275,14 +280,14 @@ class FootballAPI:
                          current=current)
 
     def get_head_to_head(self,
-                         h2h: str, # format: id-id
+                         h2h: str,  # format: id-id
                          date: str = None,
                          league: int = None,
-                         season: int = None, # format: 4 chars- YYYY
+                         season: int = None,  # format: 4 chars- YYYY
                          last: int = None,
                          next_: int = None,
-                         from_: str = None, # format: YYYY-MM-DD
-                         to: str = None, # format: YYYY-MM-DD
+                         from_: str = None,  # format: YYYY-MM-DD
+                         to: str = None,  # format: YYYY-MM-DD
                          venue: int = None,
                          timezone: str = None):
         return self._get('fixtures/headtohead',
@@ -341,7 +346,7 @@ class FootballAPI:
 
     def get_injuries(self,
                      league: int = None,
-                     season: int  = None, # format: 4 chars- YYYY
+                     season: int = None,  # format: 4 chars- YYYY
                      fixture: int = None,
                      team: int = None,
                      player: int = None,
@@ -351,7 +356,8 @@ class FootballAPI:
             'league': league, 'season': season, 'fixture': fixture,
             'team': team, 'player': player, 'date': date, 'timezone': timezone
         }
-        missing_params = self.parameter_validator.check_missing_params(params)
+        missing_params = self.parameter_validator.check_missing_params(league, season, fixture,
+                                                                       team, player, date, timezone)
 
         if missing_params:
             raise MissingParametersError("At least one of the optional parameters is required.")
@@ -365,3 +371,111 @@ class FootballAPI:
                          date=date,
                          timezone=timezone)
 
+    def get_predictions(self, fixture: int):
+        return self._get('predictions', fixture=fixture)
+
+    def get_coachs(self,
+                   id: int = None,
+                   team: int = None,
+                   search: int = None  # chars >= 3
+                   ):
+
+        missing_params = self.parameter_validator.check_missing_params(id, search, team)
+        # checks if it has at least one params
+        if missing_params:
+            raise MissingParametersError("At least one of the optional parameters is required.")
+
+        return self._get('coachs', id=id, search=search, team=team)
+
+    def get_player_seasons(self, player: int = None):
+
+        return self._get('players/seasons', player=player)
+
+    def get_player(self,
+                   id: int = None,
+                   team: int = None,
+                   league: int = None,
+                   season: int = None,
+                   search: str = None,
+                   page: int = 1
+                   ):
+        try:
+            self.parameter_validator.check_missing_params(id, team, league, season, search)
+            self.parameter_validator.validate_player_fields(id, team, league, season, search)
+            self.parameter_validator.validate_player_page_field(page=page, id=id, team=team, league=league,
+                                                                season=season, search=search)
+            return self._get('players',
+                             id=id,
+                             team=team,
+                             league=league,
+                             search=search,
+                             season=season,
+                             page=page)
+        except ValueError as e:
+            print(f"Validation error: {str(e)}")
+            raise
+
+    def get_players_squads(self, team, player):
+        try:
+            missing_para = self.parameter_validator.check_missing_params(team, player)
+            if missing_para:
+                raise MissingParametersError()
+            return self._get('players/squads', team=team, player=player)
+        except MissingParametersError as e:
+            print(f" Missing Parameter error")
+            raise
+
+    def get_player_top_scorers(self, league: int,
+                               season: int  # validate: YYYY
+                               ):
+
+        return self._get('players/topscorers', league=league, season=season)
+
+    def get_player_top_assist(self, league: int,
+                              season: int  # validate: YYYY
+                              ):
+
+        return self._get('players/topassists', league=league, season=season)
+
+    def get_player_top_yellow_cards(self, league: int,
+                                    season: int  # validate: YYYY
+                                    ):
+        return self._get('players/topyellowcards', league=league, season=season)
+
+    def get_player_top_red_cards(self, league: int,
+                                 season: int  # validate: YYYY
+                                 ):
+        return self._get('players/topredcards', league=league, season=season)
+
+    def get_transfers(self, player: int = None, team: int = None):
+
+        try:
+            missing_para = self.parameter_validator.check_missing_params(team, player)
+            if missing_para:
+                raise MissingParametersError()
+            return self._get('transfers', team=team, player=player)
+        except MissingParametersError as e:
+            print(f" Missing Parameter error")
+            raise
+
+    def get_trophies(self, player: int = None, coach: int = None):
+
+        try:
+            missing_para = self.parameter_validator.check_missing_params(player, coach)
+            if missing_para:
+                raise MissingParametersError()
+            return self._get('trophies', player=player, coach=coach)
+        except MissingParametersError as e:
+            print(f" Missing Parameter error")
+            raise
+
+    def get_sidelined(self, player: int = None, coach: int = None):
+
+        try:
+            missing_para = self.parameter_validator.check_missing_params(player, coach)
+            if missing_para:
+                raise MissingParametersError()
+            return self._get('sidelined', player=player, coach=coach)
+        except MissingParametersError as e:
+            print(f" Missing Parameter error")
+            raise
