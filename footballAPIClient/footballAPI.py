@@ -62,7 +62,8 @@ class FootballAPI:
              fixture: int = None,
              player: int = None,
              page: int = None,
-             coach: int = None
+             coach: int = None,
+             bet: int = None
              ):
         url = f"{self.base_url}/{path}"
         headers = self.get_headers()
@@ -137,6 +138,9 @@ class FootballAPI:
 
         if coach:
             params["coach"] = coach
+
+        if bet:
+            params["bet"] = bet
 
         response_data = self._send_requests('GET', url, headers, params=params)
         return response_data
@@ -479,3 +483,25 @@ class FootballAPI:
         except MissingParametersError as e:
             print(f" Missing Parameter error")
             raise
+
+    def get_in_play_odds(self, fixture: int = None, league: int = None, bet: int = None):
+        try:
+            missing_para = self.parameter_validator.check_missing_params(fixture, league, bet)
+            if missing_para:
+                raise MissingParametersError()
+            return self._get('odds/live', fixture=fixture, league=league, bet=bet)
+        except MissingParametersError as e:
+            print(f" Missing Parameter error")
+            raise
+
+    def get_all_bets_in_play(self, id: str = None, search: str = None):
+        try:
+            missing_para = self.parameter_validator.check_missing_params(id, search)
+            if missing_para:
+                raise MissingParametersError()
+            return self._get('odds/bets', id=id, search=search)
+        except MissingParametersError as e:
+            print(f" Missing Parameter error")
+            raise
+
+
