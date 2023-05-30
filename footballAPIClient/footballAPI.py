@@ -147,9 +147,14 @@ class FootballAPI:
 
     def get_countries(self, name: str = None, code: str = None, search: str = None):
 
-        return self._get("countries", name, code, search)
+        try:
+            if search:
+                self.parameter_validator.validate_search_field(search)
+            return self._get("countries", name, code, search)
+        except ValueError as e:
+            raise
 
-    def get_timezone(self, name: str = None, code: str = None, search: str = None):
+    def get_timezone(self):
         # might need to add exceptions
         return self._get("timezone")
 
@@ -163,8 +168,16 @@ class FootballAPI:
                     current: str = None,
                     search: str = None,
                     last: str = None):
-        # SEARCH: criteria is >= 3 words
-        return self._get("leagues", id, name, country, code, season, team, type, current, search, last)
+
+        try:
+            if code:
+                self.parameter_validator.validate_code_field(code)
+            if search:
+                self.parameter_validator.validate_search_field(search)
+            return self._get("leagues", id, name, country, code, season, team, type, current, search, last)
+
+        except ValueError as e:
+            raise
 
     def get_leagues_seasons(self):
         # TO-DO: only send the Responses
@@ -179,17 +192,22 @@ class FootballAPI:
                               venue: str = None,
                               search: str = None):
 
-        missing_params = self.parameter_validator.check_missing_params(id, name, league, season,
-                                                                       country, code,
-                                                                       venue, search)
-        # checks if it has at least one params
-        if missing_params:
-            raise MissingParametersError("At least one of the optional parameters is required.")
+        try:
+            if search:
+                self.parameter_validator.validate_search_field(search)
+            missing_params = self.parameter_validator.check_missing_params(id, name, league, season,
+                                                                           country, code,
+                                                                           venue, search)
+            # checks if it has at least one params
+            if missing_params:
+                raise MissingParametersError("At least one of the optional parameters is required.")
 
-        return self._get(path="teams", id=id, name=name, league=league, country=country,
-                         season=season, code=code, venue=venue,
-                         search=search
-                         )
+            return self._get(path="teams", id=id, name=name, league=league, country=country,
+                             season=season, code=code, venue=venue,
+                             search=search
+                             )
+        except Exception as e:
+            raise
 
     def team_statistics(self, league: int,
                         season: int,

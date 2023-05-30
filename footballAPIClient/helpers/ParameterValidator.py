@@ -1,3 +1,4 @@
+import re
 class ParameterValidator:
     @staticmethod
     def check_missing_params(*args):
@@ -28,3 +29,19 @@ class ParameterValidator:
     def validate_player_page_field(page, **kwargs):
         if page and all(value is None for value in kwargs.values()):
             raise ValueError("Page requires at least one of the other fields.")
+
+    @staticmethod
+    def validate_search_field(search: str):
+        if len(search) < 3:
+            raise ValueError(" Search field must have at least 3 characters")
+
+    @staticmethod
+    def validate_code_field(code: str):
+        if len(code) is not 2:
+            raise ValueError(" code field must have 2 characters")
+
+    @staticmethod
+    def validate_season_field(season: int):
+        pattern = r'^\d{4}$'  # Regex pattern for matching "YYYY" format
+        if not re.match(pattern, str(season)):
+            raise ValueError("Invalid season format. Expected format: YYYY (year).")
