@@ -7,6 +7,16 @@ class ParameterValidator:
         return False
 
     @staticmethod
+    def validate_type_str(val: str, field_name: str):
+        if not isinstance(val, str):
+            raise TypeError(f"{field_name} must be an string.")
+
+    @staticmethod
+    def validate_type_int(val: int, field_name: str):
+        if not isinstance(val, int):
+            raise TypeError(f"{field_name} must be an integer.")
+
+    @staticmethod
     def validate_player_fields(id, team, league, season, search):
         field_pairs = [
             ("search", ['league', 'team']),

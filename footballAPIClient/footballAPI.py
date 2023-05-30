@@ -176,7 +176,7 @@ class FootballAPI:
                 self.parameter_validator.validate_search_field(search)
             return self._get("leagues", id, name, country, code, season, team, type, current, search, last)
 
-        except ValueError as e:
+        except Exception as e:
             raise
 
     def get_leagues_seasons(self):
