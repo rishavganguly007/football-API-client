@@ -1,25 +1,66 @@
+import os
 import requests
+import logging
+import json
 
 from footballAPIClient.Exceptions.MissingParametersError import MissingParametersError
+from footballAPIClient.Exceptions.ApiKeyMissingError import ApiKeyMissingError
 from footballAPIClient.helpers.ParameterValidator import ParameterValidator
+from footballAPIClient.Exceptions.APILimitExceededError import APILimitExceededError
 
 
 class FootballAPI:
     def __init__(self,
-                 api_key: str = None):
+                 account_type: str,
+                 api_key: str = None
+                 ):
+        self.logger = logging.getLogger(__name__)
         self.parameter_validator = ParameterValidator()
-        self.base_url: str = "http://v3.football.api-sports.io"
+        self.header_dict = {'Rapid-API': "rapid-api", 'API-football': "api-sports"}
         self.api_key = api_key
+        self.max_credit = None
+        self.available_credit = None
+        try:
+            self.parameter_validator.validate_account_header_type(account_type)
+            self.account_type = account_type
+            if self.account_type.lower() == self.header_dict.get("Rapid-API"):
+                self.base_url = "https://api-football-v1.p.rapidapi.com/v3"
+            elif self.account_type.lower() == self.header_dict.get("API-football"):
+                self.base_url: str = "http://v3.football.api-sports.io"
+
+            if self.api_key is None:
+                self.api_key = os.environ["API_KEY"]
+
+            self.update_credit()
+        except Exception as e:
+            if isinstance(e, KeyError):
+                raise ApiKeyMissingError("No API_KEY set as environment variable or provided.")
+            else:
+                raise
+
+    def update_credit(self):
+        self.logger.info("Updating credits")
+        data = self.get_status()
+        self.max_credit = data["response"]["requests"]["limit_day"]
+        current_used_credit = data["response"]["requests"]["current"] + 1  # as a fail-safe situation added 1
+        self.available_credit = self.max_credit - current_used_credit
+        self.logger.info(f"{self.available_credit} credit(s) available.")
 
     def get_headers(self):
         headers = {}
-        if self.api_key:
+
+        if self.account_type.lower() == self.header_dict.get("Rapid-API"):
+            headers['x-apisports-host'] = "v3.football.api-sports.io"
             headers['x-apisports-key'] = self.api_key
-            return headers
+
+        elif self.account_type.lower() == self.header_dict.get("API-football"):
+            headers['x-apisports-key'] = self.api_key
+        return headers
 
     def _send_requests(self, method, url, headers, params=None, data=None):
 
         try:
+
             response = requests.request(
                 method,
                 url,
@@ -27,9 +68,10 @@ class FootballAPI:
                 params=params,
                 json=data
             )
+            status_code = response.status_code
             response.raise_for_status()
-            # return response.json # use this
-            return response.text  # delete lter
+            self.logger.log(level=logging.INFO, msg="Request Successful: {}".format(status_code))
+            return response.json()
         except requests.exceptions.RequestException as e:
             # Handle request exceptions or errors
             print(f"Request error: {e}")
@@ -166,11 +208,24 @@ class FootballAPI:
                 self.parameter_validator.validate_type_int(bet, "bet")
                 params["bet"] = bet
 
+            if path == 'status':
+                response_data = self._send_requests('GET', url, headers, params=params)
+                return response_data
+
+            if self.available_credit <= 0:
+                self.logger.info(f"API limit exceed the daily quota of {self.max_credit}. Please try next "
+                                  f"day.")
+                raise APILimitExceededError(f"API limit exceed the daily quota of {self.max_credit}. Please try next "
+                                            f"day.")
+
             response_data = self._send_requests('GET', url, headers, params=params)
+            self.update_credit()
             return response_data
         except Exception as e:
-            print(e)
             raise
+
+    def get_status(self):
+        return self._get('status')
 
     def get_countries(self, name: str = None, code: str = None, search: str = None):
 
@@ -202,7 +257,6 @@ class FootballAPI:
         try:
             if code:
                 self.parameter_validator.validate_code_field(code)
-
 
             if search:
                 self.parameter_validator.validate_search_field(search)
@@ -255,7 +309,7 @@ class FootballAPI:
     def team_statistics(self, league: int,
                         season: int,
                         team: int,
-                        date: str= None):
+                        date: str = None):
         """
         TO-DO:  date should be of format: 'YYYY-MM-DD'
                 season of 4 character, 'YYYY'
@@ -400,7 +454,7 @@ class FootballAPI:
                          from_: str = None,  # format: YYYY-MM-DD
                          to: str = None,  # format: YYYY-MM-DD
                          venue: int = None,
-                         status: str= None,
+                         status: str = None,
                          timezone: str = None):
 
         try:

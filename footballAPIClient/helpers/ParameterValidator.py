@@ -1,10 +1,16 @@
 import re
 from datetime import datetime
-
 import pycountry
 
 
 class ParameterValidator:
+
+    @staticmethod
+    def validate_account_header_type(header: str):
+        allowed_accounts = {"rapid-api", "api-sports"}
+
+        if header.lower() not in allowed_accounts:
+            raise ValueError(f"allowed account types : 'rapid-api', 'api-sports' ")
     @staticmethod
     def check_missing_params(*args):
         if all(param is None for param in args):
