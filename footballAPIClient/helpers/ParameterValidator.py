@@ -2,15 +2,19 @@ import re
 from datetime import datetime
 import pycountry
 
+from footballAPIClient._constants import RAPID_API
+from footballAPIClient._constants import FOOTBALL_API
+
 
 class ParameterValidator:
 
     @staticmethod
     def validate_account_header_type(header: str):
-        allowed_accounts = {"rapid-api", "api-sports"}
+        allowed_accounts = {RAPID_API, FOOTBALL_API}
 
         if header.lower() not in allowed_accounts:
             raise ValueError(f"allowed account types : 'rapid-api', 'api-sports' ")
+
     @staticmethod
     def check_missing_params(*args):
         if all(param is None for param in args):
@@ -120,6 +124,7 @@ class ParameterValidator:
         if len(str(next_)) <= 2:
             raise ValueError("The next field cannot exceed 2 characters in length.")
         return
+
     @staticmethod
     def validate_status_field(status: str):
         allowed_fixture_status = [
@@ -143,7 +148,7 @@ class ParameterValidator:
             'WO',
             'LIVE'
         ]
-
+        # pattern to check strings like TBD, TBD-LIVE, etc.
         pattern = r'^({})(?:-({}))*$'.format('|'.join(allowed_fixture_status), '|'.join(allowed_fixture_status))
 
         if not re.match(pattern, status):
@@ -157,4 +162,3 @@ class ParameterValidator:
         if not re.match(pattern, h2h):
             raise ValueError(f"Incorrect h2h value.")
         return
-

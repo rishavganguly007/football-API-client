@@ -3,35 +3,49 @@ from http.client import HTTPException
 
 import requests
 import logging
-import json
 
 from footballAPIClient.Exceptions.MissingParametersError import MissingParametersError
 from footballAPIClient.Exceptions.ApiKeyMissingError import ApiKeyMissingError
 from footballAPIClient.helpers.ParameterValidator import ParameterValidator
 from footballAPIClient.Exceptions.APILimitExceededError import APILimitExceededError
+from footballAPIClient._constants import RAPID_API, FOOTBALL_API, FOOTBALL_API_URI, RAPID_API_URI
 
 
 class FootballAPI:
+    """
+    Python Binding (API wrapper) for the Football API. (https://www.api-football.com/documentation-v3)
+    You can use our API client to access all API endpoints, which can get information about Football Leagues & Cups.
+    """
+
     def __init__(self,
                  account_type: str,
                  api_key: str = None
                  ):
-        self.logger = logging.getLogger(__name__)
-        self.parameter_validator = ParameterValidator()
-        self.header_dict = {'Rapid-API': "rapid-api", 'API-football': "api-sports"}
-        self.api_key = api_key
-        self.max_credit = None
-        self.available_credit = None
-        try:
-            self.parameter_validator.validate_account_header_type(account_type)
-            self.account_type = account_type
-            if self.account_type.lower() == self.header_dict.get("Rapid-API"):
-                self.base_url = "https://api-football-v1.p.rapidapi.com/v3"
-            elif self.account_type.lower() == self.header_dict.get("API-football"):
-                self.base_url: str = "http://v3.football.api-sports.io"
 
-            if self.api_key is None:
-                self.api_key = os.environ["API_KEY"]
+        """
+
+        :param account_type: Indicates weather the account is used from Rapid-API or from dashboard.
+        it consists of values: rapid-api, and api-sports
+        :param api_key: It uses API keys to allow access to the API. You can register a new API
+        key in rapidapi or directly on the dashboard.
+
+        """
+
+        self.logger = logging.getLogger(__name__)
+        self._parameter_validator = ParameterValidator()
+        self._api_key = api_key
+        self._max_credit = None
+        self._available_credit = None
+        try:
+            self._parameter_validator.validate_account_header_type(account_type)
+            self.account_type = account_type
+            if self.account_type.lower() == RAPID_API:
+                self.base_url = RAPID_API_URI
+            elif self.account_type.lower() == FOOTBALL_API:
+                self.base_url: str = FOOTBALL_API_URI
+
+            if self._api_key is None:
+                self._api_key = os.environ["API_KEY"]
 
             self._update_credit()
         except Exception as e:
@@ -43,21 +57,29 @@ class FootballAPI:
     def _update_credit(self):
         self.logger.info("Updating credits")
         data = self.get_status()
-        self.max_credit = data["response"]["requests"]["limit_day"]
+        self._max_credit = data["response"]["requests"]["limit_day"]
         current_used_credit = data["response"]["requests"]["current"] + 1  # as a fail-safe situation added 1
-        self.available_credit = self.max_credit - current_used_credit
-        self.logger.info(f"{self.available_credit} credit(s) available.")
+        self._available_credit = self._max_credit - current_used_credit
+        self.logger.info(f"{self._available_credit} credit(s) available.")
 
     def _get_headers(self):
         headers = {}
 
-        if self.account_type.lower() == self.header_dict.get("Rapid-API"):
+        if self.account_type.lower() == RAPID_API:
             headers['x-apisports-host'] = "v3.football.api-sports.io"
-            headers['x-apisports-key'] = self.api_key
+            headers['x-apisports-key'] = self._api_key
 
-        elif self.account_type.lower() == self.header_dict.get("API-football"):
-            headers['x-apisports-key'] = self.api_key
+        elif self.account_type.lower() == FOOTBALL_API:
+            headers['x-apisports-key'] = self._api_key
         return headers
+
+    @property
+    def max_credits(self):
+        return self._max_credit
+
+    @property
+    def available_credits(self):
+        return self._available_credit
 
     def _send_requests(self, method, url, headers, params=None, data=None):
 
@@ -116,109 +138,109 @@ class FootballAPI:
             # preparing the query parameter
             params = {}
             if id:
-                self.parameter_validator.validate_type_int(id, "id")
+                self._parameter_validator.validate_type_int(id, "id")
                 params["id"] = id
             if name:
-                self.parameter_validator.validate_type_str(name, 'name')
+                self._parameter_validator.validate_type_str(name, 'name')
                 params["name"] = name
             if code:
-                self.parameter_validator.validate_type_str(code, "code")
+                self._parameter_validator.validate_type_str(code, "code")
                 params["code"] = code
             if search:
-                self.parameter_validator.validate_type_str(search, "search")
+                self._parameter_validator.validate_type_str(search, "search")
                 params["search"] = search
             if season:
-                self.parameter_validator.validate_type_int(season, "season")
+                self._parameter_validator.validate_type_int(season, "season")
                 params['season'] = season
             if team:
-                self.parameter_validator.validate_type_int(team, "team")
+                self._parameter_validator.validate_type_int(team, "team")
                 params['team'] = team
             if type:
-                self.parameter_validator.validate_type_str(type, "type")
+                self._parameter_validator.validate_type_str(type, "type")
                 params['type'] = type
             if current:
-                self.parameter_validator.validate_type_str(current, "current")
+                self._parameter_validator.validate_type_str(current, "current")
                 params['current'] = current
             if last:
-                self.parameter_validator.validate_type_int(last, "last")
+                self._parameter_validator.validate_type_int(last, "last")
                 params['last'] = last
             if league:
-                self.parameter_validator.validate_type_int(league, "league")
+                self._parameter_validator.validate_type_int(league, "league")
                 params['league'] = league
             if venue:
-                self.parameter_validator.validate_type_str(venue, "venue")
+                self._parameter_validator.validate_type_str(venue, "venue")
                 params["venue"] = venue
             if date:
-                self.parameter_validator.validate_type_str(date, "date")
+                self._parameter_validator.validate_type_str(date, "date")
                 params["date"] = date
             if country:
-                self.parameter_validator.validate_type_str(country, "country")
+                self._parameter_validator.validate_type_str(country, "country")
                 params['country'] = country
             if city:
-                self.parameter_validator.validate_type_str(city, "city")
+                self._parameter_validator.validate_type_str(city, "city")
                 params['city'] = city
             if ids:
-                self.parameter_validator.validate_type_str(ids, "ids")
+                self._parameter_validator.validate_type_str(ids, "ids")
                 params["ids"] = ids
             if live:
-                self.parameter_validator.validate_type_str(live, "live")
+                self._parameter_validator.validate_type_str(live, "live")
                 params["live"] = live
             if next_:
-                self.parameter_validator.validate_type_int(next_, "next")
+                self._parameter_validator.validate_type_int(next_, "next")
                 params["next"] = next_
 
             if from_:
-                self.parameter_validator.validate_type_str(from_, "from")
+                self._parameter_validator.validate_type_str(from_, "from")
                 params["from"] = from_
 
             if to:
-                self.parameter_validator.validate_type_str(to, "to")
+                self._parameter_validator.validate_type_str(to, "to")
                 params["to"] = to
 
             if round_:
-                self.parameter_validator.validate_type_str(round_, "round")
+                self._parameter_validator.validate_type_str(round_, "round")
                 params["round"] = round_
 
             if status:
-                self.parameter_validator.validate_type_str(status, "status`")
+                self._parameter_validator.validate_type_str(status, "status`")
                 params["status"] = status
 
             if timezone:
-                self.parameter_validator.validate_type_str(timezone, "timezone")
+                self._parameter_validator.validate_type_str(timezone, "timezone")
                 params["timezone"] = timezone
 
             if h2h:
-                self.parameter_validator.validate_type_str(h2h, "h2h")
+                self._parameter_validator.validate_type_str(h2h, "h2h")
                 params["h2h"] = h2h
 
             if fixture:
-                self.parameter_validator.validate_type_int(fixture, "fixture")
+                self._parameter_validator.validate_type_int(fixture, "fixture")
                 params["fixture"] = fixture
 
             if player:
-                self.parameter_validator.validate_type_int(player, "player")
+                self._parameter_validator.validate_type_int(player, "player")
                 params["player"] = player
 
             if page:
-                self.parameter_validator.validate_type_int(page, "page")
+                self._parameter_validator.validate_type_int(page, "page")
                 params["page"] = page
 
             if coach:
-                self.parameter_validator.validate_type_int(coach, "coach")
+                self._parameter_validator.validate_type_int(coach, "coach")
                 params["coach"] = coach
 
             if bet:
-                self.parameter_validator.validate_type_int(bet, "bet")
+                self._parameter_validator.validate_type_int(bet, "bet")
                 params["bet"] = bet
 
             if path == 'status':
                 response_data = self._send_requests('GET', url, headers, params=params)
                 return response_data
 
-            if self.available_credit <= 0:
-                self.logger.info(f"API limit exceed the daily quota of {self.max_credit}. Please try next "
-                                  f"day.")
-                raise APILimitExceededError(f"API limit exceed the daily quota of {self.max_credit}. Please try next "
+            if self._available_credit <= 0:
+                self.logger.info(f"API limit exceed the daily quota of {self._max_credit}. Please try next "
+                                 f"day.")
+                raise APILimitExceededError(f"API limit exceed the daily quota of {self._max_credit}. Please try next "
                                             f"day.")
 
             response_data = self._send_requests('GET', url, headers, params=params)
@@ -248,7 +270,7 @@ class FootballAPI:
         """
         try:
             if search:
-                self.parameter_validator.validate_search_field(search)
+                self._parameter_validator.validate_search_field(search)
             return self._get("countries", name, code, search)
         except Exception as e:
             raise
@@ -293,18 +315,18 @@ class FootballAPI:
 
         try:
             if code:
-                self.parameter_validator.validate_code_field(code)
+                self._parameter_validator.validate_code_field(code)
 
             if search:
-                self.parameter_validator.validate_search_field(search)
+                self._parameter_validator.validate_search_field(search)
             if season:
-                self.parameter_validator.validate_season_field(season)
+                self._parameter_validator.validate_season_field(season)
             if type:
-                self.parameter_validator.validate_type_field(type)
+                self._parameter_validator.validate_type_field(type)
             if current:
-                self.parameter_validator.validate_current_field(current)
+                self._parameter_validator.validate_current_field(current)
             if last:
-                self.parameter_validator.validate_last_field(last)
+                self._parameter_validator.validate_last_field(last)
             return self._get("leagues", id, name, country, code, season, team, type, current, search, last)
 
         except Exception as e:
@@ -344,14 +366,14 @@ class FootballAPI:
 
         try:
             if season:
-                self.parameter_validator.validate_season_field(season)
+                self._parameter_validator.validate_season_field(season)
             if search:
-                self.parameter_validator.validate_search_field(search)
+                self._parameter_validator.validate_search_field(search)
             if code:
-                self.parameter_validator.validate_team_code_field(code)
-            missing_params = self.parameter_validator.check_missing_params(id, name, league, season,
-                                                                           country, code,
-                                                                           venue, search)
+                self._parameter_validator.validate_team_code_field(code)
+            missing_params = self._parameter_validator.check_missing_params(id, name, league, season,
+                                                                            country, code,
+                                                                            venue, search)
             # checks if it has at least one params
             if missing_params:
                 raise MissingParametersError("At least one of the optional parameters is required.")
@@ -380,9 +402,9 @@ class FootballAPI:
 
         try:
             if season:
-                self.parameter_validator.validate_season_field(season)
+                self._parameter_validator.validate_season_field(season)
             if date:
-                self.parameter_validator.validate_date_field(date)
+                self._parameter_validator.validate_date_field(date)
 
             return self._get('teams/statistics', league=league, season=season, team=team, date=date)
         except Exception as e:
@@ -429,10 +451,10 @@ class FootballAPI:
 
         try:
             if search:
-                self.parameter_validator.validate_search_field(search)
+                self._parameter_validator.validate_search_field(search)
 
-            missing_params = self.parameter_validator.check_missing_params(id, name, city, country,
-                                                                           search)
+            missing_params = self._parameter_validator.check_missing_params(id, name, city, country,
+                                                                            search)
             if missing_params:
                 raise MissingParametersError("At least one of the optional parameters is required.")
 
@@ -461,7 +483,7 @@ class FootballAPI:
 
         try:
             if season:
-                self.parameter_validator.validate_season_field(season)
+                self._parameter_validator.validate_season_field(season)
             return self._get('standings',
                              league=league,
                              season=season,
@@ -509,23 +531,23 @@ class FootballAPI:
 
         try:
             if ids:
-                self.parameter_validator.validate_ids_field(ids)
+                self._parameter_validator.validate_ids_field(ids)
             if live:
-                self.parameter_validator.validate_live_field(live)
+                self._parameter_validator.validate_live_field(live)
             if date:
-                self.parameter_validator.validate_date_field(date)
+                self._parameter_validator.validate_date_field(date)
             if season:
-                self.parameter_validator.validate_season_field(season)
+                self._parameter_validator.validate_season_field(season)
             if last:
-                self.parameter_validator.validate_last_field(last)
+                self._parameter_validator.validate_last_field(last)
             if next_:
-                self.parameter_validator.validate_next_field(next_)
+                self._parameter_validator.validate_next_field(next_)
             if from_:
-                self.parameter_validator.validate_date_field(from_)
+                self._parameter_validator.validate_date_field(from_)
             if to:
-                self.parameter_validator.validate_date_field(to)
+                self._parameter_validator.validate_date_field(to)
             if status:
-                self.parameter_validator.validate_status_field(status)
+                self._parameter_validator.validate_status_field(status)
 
             return self._get('fixtures',
                              id=id,
@@ -561,9 +583,9 @@ class FootballAPI:
         :return: Returns Round json schema
         """
         try:
-            self.parameter_validator.validate_season_field(season)
+            self._parameter_validator.validate_season_field(season)
             if current:
-                self.parameter_validator.validate_current_field(current)
+                self._parameter_validator.validate_current_field(current)
             return self._get('fixtures/rounds',
                              league=league,
                              season=season,
@@ -602,15 +624,15 @@ class FootballAPI:
         """
 
         try:
-            self.parameter_validator.validate_h2h_field(h2h)
+            self._parameter_validator.validate_h2h_field(h2h)
             if season:
-                self.parameter_validator.validate_season_field(season)
+                self._parameter_validator.validate_season_field(season)
             if from_:
-                self.parameter_validator.validate_date_field(from_)
+                self._parameter_validator.validate_date_field(from_)
             if to:
-                self.parameter_validator.validate_date_field(to)
+                self._parameter_validator.validate_date_field(to)
             if status:
-                self.parameter_validator.validate_status_field(status)
+                self._parameter_validator.validate_status_field(status)
             return self._get('fixtures/headtohead',
                              h2h=h2h,
                              date=date,
@@ -728,15 +750,15 @@ class FootballAPI:
         """
 
         try:
-            missing_params = self.parameter_validator.check_missing_params(league, season, fixture,
-                                                                           team, player, date, timezone)
+            missing_params = self._parameter_validator.check_missing_params(league, season, fixture,
+                                                                            team, player, date, timezone)
             if missing_params:
                 raise MissingParametersError("At least one of the optional parameters is required.")
 
             if season:
-                self.parameter_validator.validate_season_field(season)
+                self._parameter_validator.validate_season_field(season)
             if date:
-                self.parameter_validator.validate_date_field(date)
+                self._parameter_validator.validate_date_field(date)
             return self._get('injuries',
                              league=league,
                              season=season,
@@ -775,12 +797,12 @@ class FootballAPI:
         """
 
         try:
-            missing_params = self.parameter_validator.check_missing_params(id, search, team)
+            missing_params = self._parameter_validator.check_missing_params(id, search, team)
             if missing_params:
                 raise MissingParametersError("At least one of the optional parameters is required.")
 
             if search:
-                self.parameter_validator.validate_search_field(search)
+                self._parameter_validator.validate_search_field(search)
 
             return self._get('coachs', id=id, search=search, team=team)
         except Exception as e:
@@ -822,13 +844,13 @@ class FootballAPI:
         """
 
         try:
-            self.parameter_validator.check_missing_params(id, team, league, season, search)
-            self.parameter_validator.validate_player_fields(id=id, team=team, league=league, season=season,
-                                                            search=search, page=page)
+            self._parameter_validator.check_missing_params(id, team, league, season, search)
+            self._parameter_validator.validate_player_fields(id=id, team=team, league=league, season=season,
+                                                             search=search, page=page)
             if season:
-                self.parameter_validator.validate_season_field(season)
+                self._parameter_validator.validate_season_field(season)
             if search:
-                self.parameter_validator.validate_player_search_field(search)
+                self._parameter_validator.validate_player_search_field(search)
             return self._get('players',
                              id=id,
                              team=team,
@@ -854,7 +876,7 @@ class FootballAPI:
         """
 
         try:
-            missing_para = self.parameter_validator.check_missing_params(team, player)
+            missing_para = self._parameter_validator.check_missing_params(team, player)
             if missing_para:
                 raise MissingParametersError()
             return self._get('players/squads', team=team, player=player)
@@ -875,7 +897,7 @@ class FootballAPI:
         """
 
         try:
-            self.parameter_validator.validate_season_field(season)
+            self._parameter_validator.validate_season_field(season)
             return self._get('players/topscorers', league=league, season=season)
         except Exception as e:
             raise
@@ -893,7 +915,7 @@ class FootballAPI:
         """
 
         try:
-            self.parameter_validator.validate_season_field(season)
+            self._parameter_validator.validate_season_field(season)
             return self._get('players/topassists', league=league, season=season)
         except Exception as e:
             raise
@@ -911,7 +933,7 @@ class FootballAPI:
         """
 
         try:
-            self.parameter_validator.validate_season_field(season)
+            self._parameter_validator.validate_season_field(season)
             return self._get('players/topyellowcards', league=league, season=season)
         except Exception as e:
             raise
@@ -929,7 +951,7 @@ class FootballAPI:
         """
 
         try:
-            self.parameter_validator.validate_season_field(season)
+            self._parameter_validator.validate_season_field(season)
             return self._get('players/topredcards', league=league, season=season)
         except Exception as e:
             raise
@@ -945,7 +967,7 @@ class FootballAPI:
         """
 
         try:
-            missing_para = self.parameter_validator.check_missing_params(team, player)
+            missing_para = self._parameter_validator.check_missing_params(team, player)
             if missing_para:
                 raise MissingParametersError()
             return self._get('transfers', team=team, player=player)
@@ -964,7 +986,7 @@ class FootballAPI:
         """
 
         try:
-            missing_para = self.parameter_validator.check_missing_params(player, coach)
+            missing_para = self._parameter_validator.check_missing_params(player, coach)
             if missing_para:
                 raise MissingParametersError()
             return self._get('trophies', player=player, coach=coach)
@@ -983,7 +1005,7 @@ class FootballAPI:
         """
 
         try:
-            missing_para = self.parameter_validator.check_missing_params(player, coach)
+            missing_para = self._parameter_validator.check_missing_params(player, coach)
             if missing_para:
                 raise MissingParametersError()
             return self._get('sidelined', player=player, coach=coach)
@@ -1003,7 +1025,7 @@ class FootballAPI:
         """
 
         try:
-            missing_para = self.parameter_validator.check_missing_params(fixture, league, bet)
+            missing_para = self._parameter_validator.check_missing_params(fixture, league, bet)
             if missing_para:
                 raise MissingParametersError()
             return self._get('odds/live', fixture=fixture, league=league, bet=bet)
@@ -1022,11 +1044,11 @@ class FootballAPI:
         """
 
         try:
-            missing_para = self.parameter_validator.check_missing_params(id, search)
+            missing_para = self._parameter_validator.check_missing_params(id, search)
             if missing_para:
                 raise MissingParametersError()
             if search:
-                self.parameter_validator.validate_search_field(search)
+                self._parameter_validator.validate_search_field(search)
             return self._get('odds/bets', id=id, search=search)
         except MissingParametersError as e:
             print(f" Missing Parameter error")
