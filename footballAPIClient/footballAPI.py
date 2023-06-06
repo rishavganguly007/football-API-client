@@ -1,4 +1,6 @@
 import os
+from http.client import HTTPException
+
 import requests
 import logging
 import json
@@ -31,14 +33,14 @@ class FootballAPI:
             if self.api_key is None:
                 self.api_key = os.environ["API_KEY"]
 
-            self.update_credit()
+            self._update_credit()
         except Exception as e:
             if isinstance(e, KeyError):
                 raise ApiKeyMissingError("No API_KEY set as environment variable or provided.")
             else:
                 raise
 
-    def update_credit(self):
+    def _update_credit(self):
         self.logger.info("Updating credits")
         data = self.get_status()
         self.max_credit = data["response"]["requests"]["limit_day"]
@@ -46,7 +48,7 @@ class FootballAPI:
         self.available_credit = self.max_credit - current_used_credit
         self.logger.info(f"{self.available_credit} credit(s) available.")
 
-    def get_headers(self):
+    def _get_headers(self):
         headers = {}
 
         if self.account_type.lower() == self.header_dict.get("Rapid-API"):
@@ -69,8 +71,9 @@ class FootballAPI:
                 json=data
             )
             status_code = response.status_code
-            response.raise_for_status()
             self.logger.log(level=logging.INFO, msg="Request Successful: {}".format(status_code))
+            if response.status_code != 200:
+                raise HTTPException(response.status_code, response.json())
             return response.json()
         except requests.exceptions.RequestException as e:
             # Handle request exceptions or errors
@@ -107,7 +110,7 @@ class FootballAPI:
              bet: int = None
              ):
         url = f"{self.base_url}/{path}"
-        headers = self.get_headers()
+        headers = self._get_headers()
 
         try:
             # preparing the query parameter
@@ -219,16 +222,30 @@ class FootballAPI:
                                             f"day.")
 
             response_data = self._send_requests('GET', url, headers, params=params)
-            self.update_credit()
+            self._update_credit()
             return response_data
         except Exception as e:
             raise
 
     def get_status(self):
+        """
+        It allows you to:
+        - To follow your consumption in real time
+        - Check the status of our servers
+        Note: This call does not count against the daily quota.
+        :return: Returns the status json schema
+        """
         return self._get('status')
 
     def get_countries(self, name: str = None, code: str = None, search: str = None):
+        """
+        Get the list of available countries for the leagues endpoint.
 
+        :param name: The name of the country
+        :param code: The Alpha2 code of the country
+        :param search: The name of the country
+        :return: Returns the Country json schema
+        """
         try:
             if search:
                 self.parameter_validator.validate_search_field(search)
@@ -237,7 +254,11 @@ class FootballAPI:
             raise
 
     def get_timezone(self):
-        # might need to add exceptions
+        """
+        Get the list of available timezone to be used in the fixtures endpoint.
+
+        :return: Returns the timezone json schema
+        """
         try:
             return self._get("timezone")
         except Exception as e:
@@ -253,6 +274,22 @@ class FootballAPI:
                     current: str = None,
                     search: str = None,
                     last: int = None):
+
+        """
+        Get the list of available leagues and cups.
+
+        :param id: The id of the league
+        :param name: The name of the league
+        :param country: The country name of the league
+        :param code: The Alpha2 code of the country
+        :param season: The season of the league
+        :param team: The id of the team
+        :param type: The type of the league. Enum: "league" "cup"
+        :param current: The state of the league. Enum: "true" "false"
+        :param search: The name or the country of the league
+        :param last: The X last leagues/cups added in the API
+        :return: Returns the Leagues json schema
+        """
 
         try:
             if code:
@@ -274,6 +311,12 @@ class FootballAPI:
             raise
 
     def get_leagues_seasons(self):
+
+        """
+        Get the list of available seasons.
+        :return: Returns Season json schema
+        """
+
         return self._get("leagues/seasons")
 
     def get_teams_information(self, id: int = None,
@@ -284,6 +327,20 @@ class FootballAPI:
                               code: str = None,
                               venue: str = None,
                               search: str = None):
+
+        """
+        Get the list of available teams.
+
+        :param id: The id of the team
+        :param name: The name of the team
+        :param league: The id of the league
+        :param season: The season of the league
+        :param country: The country name of the team
+        :param code: The code of the team
+        :param venue: The id of the venue
+        :param search: The name or the country name of the team
+        :return: Returns the Teams json schema
+        """
 
         try:
             if season:
@@ -310,11 +367,17 @@ class FootballAPI:
                         season: int,
                         team: int,
                         date: str = None):
+
         """
-        TO-DO:  date should be of format: 'YYYY-MM-DD'
-                season of 4 character, 'YYYY'
-        -- create a helper dir to handle all this things
+        Returns the statistics of a team in relation to a given competition and season.
+
+        :param league: The id of the league
+        :param season: The season of the league
+        :param team: The id of the team
+        :param date: The limit date
+        :return: Returns Team statistics json schema
         """
+
         try:
             if season:
                 self.parameter_validator.validate_season_field(season)
@@ -326,9 +389,24 @@ class FootballAPI:
             raise
 
     def get_teams_seasons(self, team: int):
+
+        """
+        Get the list of seasons available for a team.
+
+        :param team: The id of the team
+        :return: Returns teams seasons json schema
+        """
+
         return self._get('teams/seasons', team=team)
 
     def get_teams_country(self):
+
+        """
+        Get the list of countries available for the teams endpoint.
+
+        :return: Returns team countries json schema
+        """
+
         return self._get('teams/countries')
 
     def get_venues(self,
@@ -337,6 +415,17 @@ class FootballAPI:
                    city: str = None,
                    country: str = None,
                    search: str = None):
+
+        """
+        Get the list of available venues.
+
+        :param id: The id of the venue
+        :param name: The name of the venue
+        :param city: The city of the venue
+        :param country: The country name of the venue
+        :param search: The name, city or the country of the venue
+        :return: Returns Venue json schema
+        """
 
         try:
             if search:
@@ -360,6 +449,16 @@ class FootballAPI:
                       season: int,
                       league: int = None,
                       team: str = None):
+
+        """
+        Get the standings for a league or a team.
+
+        :param season: The season of the league
+        :param league: The id of the league
+        :param team: The id of the team
+        :return: Returns the standings json schema
+        """
+
         try:
             if season:
                 self.parameter_validator.validate_season_field(season)
@@ -386,6 +485,27 @@ class FootballAPI:
                      status: str = None,
                      venue: str = None,
                      timezone: str = None):
+
+        """
+        Get the fixtures of league or cup.
+
+        :param id: The id of the fixture
+        :param ids: One or more fixture ids. Value: "id-id-id" up to 20 ids
+        :param live: All or several leagues ids. Enum: "all" "id-id"
+        :param date: A valid date
+        :param league: The id of the league
+        :param season: The season of the league
+        :param team: The id of the team
+        :param last: For the X last fixtures
+        :param next_: For the X next fixtures
+        :param from_: A valid date
+        :param to: A valid date
+        :param round_: The round of the fixture
+        :param status: One or more fixture status short. Enum: "NS" "NS-PST-FT".
+        :param venue: The venue id of the fixture
+        :param timezone: A valid timezone from the endpoint Timezone
+        :return: Returns fixture json schema
+        """
 
         try:
             if ids:
@@ -430,9 +550,16 @@ class FootballAPI:
     def get_rounds(self,
                    league: int,
                    season: int,
-                   current: str  # Enum: "true" "false"
+                   current: str
                    ):
+        """
+        Get the rounds for a league or a cup.
 
+        :param league: The id of the league
+        :param season: The season of the league
+        :param current: The current round only. Enum: "true" "false"
+        :return: Returns Round json schema
+        """
         try:
             self.parameter_validator.validate_season_field(season)
             if current:
@@ -448,14 +575,31 @@ class FootballAPI:
                          h2h: str,  # format: id-id
                          date: str = None,
                          league: int = None,
-                         season: int = None,  # format: 4 chars- YYYY
+                         season: int = None,
                          last: int = None,
                          next_: int = None,
-                         from_: str = None,  # format: YYYY-MM-DD
-                         to: str = None,  # format: YYYY-MM-DD
+                         from_: str = None,
+                         to: str = None,
                          venue: int = None,
                          status: str = None,
                          timezone: str = None):
+
+        """
+        Get heads to heads between two teams.
+
+        :param h2h: The ids of the teams. Value id-id
+        :param date: a valid date
+        :param league: The id of the league
+        :param season: The season of the league
+        :param last: For the X last fixtures
+        :param next_: For the X next fixtures
+        :param from_: a valid date
+        :param to: a valid date
+        :param venue: The venue id of the fixture
+        :param status: One or more fixture status short. Enum: "NS" "NS-PST-FT"
+        :param timezone: A valid timezone from the endpoint Timezone
+        :return: Returns Head to head json schema
+        """
 
         try:
             self.parameter_validator.validate_h2h_field(h2h)
@@ -487,6 +631,15 @@ class FootballAPI:
                                team: int = None,
                                type: str = None):
 
+        """
+        Get the statistics for one fixture.
+
+        :param fixture:
+        :param team:
+        :param type:
+        :return: Returns statistics json schema
+        """
+
         return self._get('fixtures/statistics',
                          fixture=fixture,
                          team=team,
@@ -497,6 +650,16 @@ class FootballAPI:
                            team: int = None,
                            player: int = None,
                            type: str = None):
+
+        """
+        Get the events from a fixture.
+
+        :param fixture: The id of the fixture
+        :param team: The id of the team
+        :param player: The id of the player
+        :param type: The type
+        :return: Returns event fixture json schema
+        """
 
         return self._get('fixtures/events',
                          fixture=fixture,
@@ -510,6 +673,16 @@ class FootballAPI:
                             player: int = None,
                             type: str = None):
 
+        """
+        Get the lineups for a fixture.
+
+        :param fixture: The id of the fixture
+        :param team: The id of the team
+        :param player: The id of the player
+        :param type: The type
+        :return: Returns lineups json schema
+        """
+
         return self._get('fixtures/lineups',
                          fixture=fixture,
                          team=team,
@@ -519,6 +692,14 @@ class FootballAPI:
     def get_fixture_player_statistics(self,
                                       fixture: int,
                                       team: int = None):
+
+        """
+        Get the players statistics from one fixture.
+
+        :param fixture: The id of the fixture
+        :param team: The id of the team
+        :return: Returns fixture player statistics json schema
+        """
 
         return self._get('fixtures/players',
                          fixture=fixture,
@@ -532,6 +713,20 @@ class FootballAPI:
                      player: int = None,
                      date: str = None,
                      timezone: str = None):
+
+        """
+        Get the list of players not participating in the fixtures
+
+        :param league: The id of the league
+        :param season: The season of the league, required with league, team and player parameters
+        :param fixture: The id of the fixture
+        :param team: The id of the team
+        :param player: The id of the player
+        :param date: A valid date
+        :param timezone: A valid timezone from the endpoint Timezone
+        :return: Returns injury json schema
+        """
+
         try:
             missing_params = self.parameter_validator.check_missing_params(league, season, fixture,
                                                                            team, player, date, timezone)
@@ -554,13 +749,30 @@ class FootballAPI:
             raise
 
     def get_predictions(self, fixture: int):
+
+        """
+        Get predictions about a fixture
+
+        :param fixture: The id of the fixture
+        :return: Returns the prediction json schema
+        """
+
         return self._get('predictions', fixture=fixture)
 
     def get_coachs(self,
                    id: int = None,
                    team: int = None,
-                   search: str = None  # chars >= 3
+                   search: str = None
                    ):
+
+        """
+        Get all the information about the coachs and their careers.
+
+        :param id: The id of the coach
+        :param team: The id of the team
+        :param search: The name of the coach
+        :return: Returns coach json schema
+        """
 
         try:
             missing_params = self.parameter_validator.check_missing_params(id, search, team)
@@ -576,6 +788,13 @@ class FootballAPI:
 
     def get_player_seasons(self, player: int = None):
 
+        """
+        Get all available seasons for players statistics.
+
+        :param player: The id of the player
+        :return: Returns Player season json schema
+        """
+
         try:
             return self._get('players/seasons', player=player)
         except Exception as e:
@@ -589,6 +808,19 @@ class FootballAPI:
                    search: str = None,
                    page: int = 1
                    ):
+
+        """
+        Get players statistics.
+
+        :param id: The id of the player
+        :param team: The id of the team
+        :param league: The id of the league
+        :param season: The season of the league
+        :param search: The name of the player
+        :param page: Use for the pagination. Default: 1
+        :return: Returns player json schema
+        """
+
         try:
             self.parameter_validator.check_missing_params(id, team, league, season, search)
             self.parameter_validator.validate_player_fields(id=id, team=team, league=league, season=season,
@@ -611,6 +843,16 @@ class FootballAPI:
             raise
 
     def get_players_squads(self, team, player):
+
+        """
+        Return the current squad of a team when the team parameter is used.
+        When the player parameter is used the endpoint returns the set of teams associated with the player.
+
+        :param team: The id of the team
+        :param player: The id of the player
+        :return: Returns players squads json schema
+        """
+
         try:
             missing_para = self.parameter_validator.check_missing_params(team, player)
             if missing_para:
@@ -624,6 +866,14 @@ class FootballAPI:
                                season: int  # validate: YYYY
                                ):
 
+        """
+        Get the 20 best players for a league or cup.
+
+        :param league: The id of the league
+        :param season: The season of the league
+        :return: Returns top scorers json schema
+        """
+
         try:
             self.parameter_validator.validate_season_field(season)
             return self._get('players/topscorers', league=league, season=season)
@@ -634,6 +884,14 @@ class FootballAPI:
                               season: int
                               ):
 
+        """
+        Get the 20 best players assists for a league or cup.
+
+        :param league: The id of the league
+        :param season: The season of the league
+        :return: Returns player assists json schema
+        """
+
         try:
             self.parameter_validator.validate_season_field(season)
             return self._get('players/topassists', league=league, season=season)
@@ -643,6 +901,15 @@ class FootballAPI:
     def get_player_top_yellow_cards(self, league: int,
                                     season: int
                                     ):
+
+        """
+        Get the 20 players with the most yellow cards for a league or cup.
+
+        :param league: The id of the league
+        :param season: The season of the league
+        :return: Returns player yellow card json schema
+        """
+
         try:
             self.parameter_validator.validate_season_field(season)
             return self._get('players/topyellowcards', league=league, season=season)
@@ -652,6 +919,15 @@ class FootballAPI:
     def get_player_top_red_cards(self, league: int,
                                  season: int
                                  ):
+
+        """
+        Get the 20 players with the most red cards for a league or cup.
+
+        :param league: The id of the league
+        :param season: The season of the league
+        :return: Returns player red card json schema
+        """
+
         try:
             self.parameter_validator.validate_season_field(season)
             return self._get('players/topredcards', league=league, season=season)
@@ -659,6 +935,14 @@ class FootballAPI:
             raise
 
     def get_transfers(self, player: int = None, team: int = None):
+
+        """
+        Get all available transfers for players and teams
+
+        :param player: The id of the player
+        :param team: The id of the team
+        :return: Returns transfers json schema
+        """
 
         try:
             missing_para = self.parameter_validator.check_missing_params(team, player)
@@ -671,6 +955,14 @@ class FootballAPI:
 
     def get_trophies(self, player: int = None, coach: int = None):
 
+        """
+        Get all available trophies for a player or a coach.
+
+        :param player: The id of the player
+        :param coach: The id of the coach
+        :return: Returns trophies json schema
+        """
+
         try:
             missing_para = self.parameter_validator.check_missing_params(player, coach)
             if missing_para:
@@ -682,6 +974,14 @@ class FootballAPI:
 
     def get_sidelined(self, player: int = None, coach: int = None):
 
+        """
+        Get all available sidelined for a player or a coach.
+
+        :param player: The id of the player
+        :param coach: The id of the coach
+        :return: Returns sidelined json schema
+        """
+
         try:
             missing_para = self.parameter_validator.check_missing_params(player, coach)
             if missing_para:
@@ -692,6 +992,16 @@ class FootballAPI:
             raise
 
     def get_in_play_odds(self, fixture: int = None, league: int = None, bet: int = None):
+
+        """
+        This endpoint returns in-play odds for fixtures in progress.
+
+        :param fixture: The id of the fixture
+        :param league: The id of the league
+        :param bet: The id of the bet
+        :return: Returns in-play odd json schema
+        """
+
         try:
             missing_para = self.parameter_validator.check_missing_params(fixture, league, bet)
             if missing_para:
@@ -702,6 +1012,15 @@ class FootballAPI:
             raise
 
     def get_all_bets_in_play(self, id: str = None, search: str = None):
+
+        """
+        Get all available bets for in-play odds.
+
+        :param id: The id of the bet name
+        :param search: The name of the bet
+        :return: Returns in play odds json schema
+        """
+
         try:
             missing_para = self.parameter_validator.check_missing_params(id, search)
             if missing_para:
