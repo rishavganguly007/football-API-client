@@ -1,0 +1,22 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "footballAPIClient"
+version = "0.0.2"
+description = "Python Binding (API wrapper) for the Football API."
+authors = ["Rishav Ganguly <rishav.ganguly07@gmail.com>"]
+readme = "README.md"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
+]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+pycountry = "^22.3.5"
+requests = "^2.27.0"
+

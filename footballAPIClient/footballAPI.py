@@ -31,7 +31,7 @@ class FootballAPI:
 
         """
 
-        self.logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(__name__)
         self._parameter_validator = ParameterValidator()
         self._api_key = api_key
         self._max_credit = None
@@ -40,9 +40,9 @@ class FootballAPI:
             self._parameter_validator.validate_account_header_type(account_type)
             self.account_type = account_type
             if self.account_type.lower() == RAPID_API:
-                self.base_url = RAPID_API_URI
+                self._base_url = RAPID_API_URI
             elif self.account_type.lower() == FOOTBALL_API:
-                self.base_url: str = FOOTBALL_API_URI
+                self._base_url: str = FOOTBALL_API_URI
 
             if self._api_key is None:
                 self._api_key = os.environ["API_KEY"]
@@ -55,12 +55,12 @@ class FootballAPI:
                 raise
 
     def _update_credit(self):
-        self.logger.info("Updating credits")
+        self._logger.info("Updating credits")
         data = self.get_status()
         self._max_credit = data["response"]["requests"]["limit_day"]
         current_used_credit = data["response"]["requests"]["current"] + 1  # as a fail-safe situation added 1
         self._available_credit = self._max_credit - current_used_credit
-        self.logger.info(f"{self._available_credit} credit(s) available.")
+        self._logger.info(f"{self._available_credit} credit(s) available.")
 
     def _get_headers(self):
         headers = {}
@@ -93,7 +93,7 @@ class FootballAPI:
                 json=data
             )
             status_code = response.status_code
-            self.logger.log(level=logging.INFO, msg="Request Successful: {}".format(status_code))
+            self._logger.log(level=logging.INFO, msg="Request Successful: {}".format(status_code))
             if response.status_code != 200:
                 raise HTTPException(response.status_code, response.json())
             return response.json()
@@ -131,7 +131,7 @@ class FootballAPI:
              coach: int = None,
              bet: int = None
              ):
-        url = f"{self.base_url}/{path}"
+        url = f"{self._base_url}/{path}"
         headers = self._get_headers()
 
         try:
@@ -238,8 +238,8 @@ class FootballAPI:
                 return response_data
 
             if self._available_credit <= 0:
-                self.logger.info(f"API limit exceed the daily quota of {self._max_credit}. Please try next "
-                                 f"day.")
+                self._logger.info(f"API limit exceed the daily quota of {self._max_credit}. Please try next "
+                                  f"day.")
                 raise APILimitExceededError(f"API limit exceed the daily quota of {self._max_credit}. Please try next "
                                             f"day.")
 
@@ -271,7 +271,9 @@ class FootballAPI:
         try:
             if search:
                 self._parameter_validator.validate_search_field(search)
-            return self._get("countries", name, code, search)
+            if code:
+                self._parameter_validator.validate_code_field(code)
+            return self._get("countries", name=name, code=code, search=search)
         except Exception as e:
             raise
 
@@ -327,7 +329,9 @@ class FootballAPI:
                 self._parameter_validator.validate_current_field(current)
             if last:
                 self._parameter_validator.validate_last_field(last)
-            return self._get("leagues", id, name, country, code, season, team, type, current, search, last)
+            return self._get("leagues", id=id, name=name, country=country, code=code,
+                             season=season, team=team, type=type, current=current,
+                             search=search, last=last)
 
         except Exception as e:
             raise
@@ -385,10 +389,10 @@ class FootballAPI:
         except Exception as e:
             raise
 
-    def team_statistics(self, league: int,
-                        season: int,
-                        team: int,
-                        date: str = None):
+    def get_team_statistics(self, league: int,
+                            season: int,
+                            team: int,
+                            date: str = None):
 
         """
         Returns the statistics of a team in relation to a given competition and season.
@@ -484,6 +488,10 @@ class FootballAPI:
         try:
             if season:
                 self._parameter_validator.validate_season_field(season)
+            missing_params = self._parameter_validator.check_missing_params(league, team)
+            if missing_params:
+                raise MissingParametersError("At least one of the optional parameters is required.")
+
             return self._get('standings',
                              league=league,
                              season=season,
@@ -492,7 +500,7 @@ class FootballAPI:
             raise
 
     def get_fixtures(self,
-                     id: str = None,
+                     id: int = None,
                      ids: str = None,
                      live: str = None,
                      date: str = None,
@@ -530,14 +538,39 @@ class FootballAPI:
         """
 
         try:
+            missing_params = self._parameter_validator.check_missing_params(id, ids, live, date, league, season,
+                                                                            team, last, next_, from_,
+                                                                            to, round_, status, venue,
+                                                                            timezone)
+            if missing_params:
+                raise MissingParametersError("At least one of the optional parameters is required.")
+
+            if id and not self._parameter_validator.check_missing_params(ids, season, live, date, league,
+                                                                         team, last, next_, from_,
+                                                                         to, round_, status, venue,
+                                                                         timezone):
+                raise MissingParametersError("The id field must be used alone.")
+
             if ids:
                 self._parameter_validator.validate_ids_field(ids)
+
+            if ids and not self._parameter_validator.check_missing_params(id, season, live, date, league,
+                                                                          team, last, next_, from_,
+                                                                          to, round_, status, venue,
+                                                                          timezone):
+                raise MissingParametersError("The ids field must be used alone.")
+
             if live:
                 self._parameter_validator.validate_live_field(live)
             if date:
                 self._parameter_validator.validate_date_field(date)
             if season:
                 self._parameter_validator.validate_season_field(season)
+            if season and self._parameter_validator.check_missing_params(live, date, league,
+                                                                         team, last, next_, from_,
+                                                                         to, round_, status, venue,
+                                                                         timezone):
+                raise MissingParametersError("The Season field need another parameter other than id ans ids. ")
             if last:
                 self._parameter_validator.validate_last_field(last)
             if next_:
@@ -729,7 +762,7 @@ class FootballAPI:
 
     def get_injuries(self,
                      league: int = None,
-                     season: int = None,  # format: 4 chars- YYYY
+                     season: int = None,
                      fixture: int = None,
                      team: int = None,
                      player: int = None,
