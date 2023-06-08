@@ -605,7 +605,7 @@ class FootballAPI:
     def get_rounds(self,
                    league: int,
                    season: int,
-                   current: str
+                   current: str = None
                    ):
         """
         Get the rounds for a league or a cup.
@@ -627,7 +627,7 @@ class FootballAPI:
             raise
 
     def get_head_to_head(self,
-                         h2h: str,  # format: id-id
+                         h2h: str,
                          date: str = None,
                          league: int = None,
                          season: int = None,
@@ -689,16 +689,21 @@ class FootballAPI:
         """
         Get the statistics for one fixture.
 
-        :param fixture:
-        :param team:
-        :param type:
+        :param fixture: The id of the fixture
+        :param team: The id of the team
+        :param type: The type of statistics
         :return: Returns statistics json schema
         """
 
-        return self._get('fixtures/statistics',
-                         fixture=fixture,
-                         team=team,
-                         type=type)
+        try:
+            if type:
+                self._parameter_validator.validate_fixture_statistics_type_field(type)
+            return self._get('fixtures/statistics',
+                             fixture=fixture,
+                             team=team,
+                             type=type)
+        except Exception as e:
+            raise
 
     def get_fixture_events(self,
                            fixture: int,
@@ -715,12 +720,17 @@ class FootballAPI:
         :param type: The type
         :return: Returns event fixture json schema
         """
+        try:
+            if type:
+                self._parameter_validator.validate_fixture_events_type_field(type)
 
-        return self._get('fixtures/events',
-                         fixture=fixture,
-                         team=team,
-                         player=player,
-                         type=type)
+            return self._get('fixtures/events',
+                             fixture=fixture,
+                             team=team,
+                             player=player,
+                             type=type)
+        except Exception as e:
+            raise
 
     def get_fixture_lineups(self,
                             fixture: int,
@@ -737,12 +747,16 @@ class FootballAPI:
         :param type: The type
         :return: Returns lineups json schema
         """
-
-        return self._get('fixtures/lineups',
-                         fixture=fixture,
-                         team=team,
-                         player=player,
-                         type=type)
+        try:
+            if type:
+                self._parameter_validator.validate_fixture_lineups_type_field(type)
+            return self._get('fixtures/lineups',
+                             fixture=fixture,
+                             team=team,
+                             player=player,
+                             type=type)
+        except Exception as e:
+            raise
 
     def get_fixture_player_statistics(self,
                                       fixture: int,
@@ -790,6 +804,10 @@ class FootballAPI:
 
             if season:
                 self._parameter_validator.validate_season_field(season)
+            if season and self._parameter_validator.check_missing_params(league, season, fixture,
+                                                                            team, player, date, timezone):
+                raise MissingParametersError("At least one of the optional parameters is required with season field.")
+
             if date:
                 self._parameter_validator.validate_date_field(date)
             return self._get('injuries',

@@ -83,7 +83,7 @@ class ParameterValidator:
     def validate_current_field(field: str):
         allowed_vals = {"true", "false"}
         if field not in allowed_vals:
-            raise ValueError(f"allowed values : true, false")
+            raise ValueError(f"allowed values in current field are : 'true', 'false'")
         return
 
     @staticmethod
@@ -157,8 +157,46 @@ class ParameterValidator:
 
     @staticmethod
     def validate_h2h_field(h2h: str):
-        pattern = r'^\d{1,}-\d{1,}'  # regext to match the format: id-id
+        pattern = r'^\d{1,}-\d{1,}'  # regex to match the format: id-id
 
         if not re.match(pattern, h2h):
             raise ValueError(f"Incorrect h2h value.")
         return
+
+    @staticmethod
+    def validate_fixture_events_type_field(field: str):
+        _allowed_vals = {"goal", "card", "subst"}
+
+        if field.lower() not in _allowed_vals:
+            raise ValueError(f"The Type field must be one of: goal, card, subst.")
+
+    @staticmethod
+    def validate_fixture_statistics_type_field(field: str):
+        _allowed_vals = {
+            "shots on goal",
+            "shots off goal",
+            "shots insidebox",
+            "shots outsidebox",
+            "total shots",
+            "blocked shots",
+            "fouls",
+            "corner kicks",
+            "offsides",
+            "ball possession",
+            "yellow cards",
+            "red cards",
+            "goalkeeper saves",
+            "total passes",
+            "passes accurate",
+            "passes %"
+        }
+        if field.lower() not in _allowed_vals:
+            raise ValueError(f" The Type field must be one of: {_allowed_vals}")
+
+    @staticmethod
+    def validate_fixture_lineups_type_field(field: str):
+        _allowed_vals = {"coach", "formation", "startxi", "substitutes"}
+
+        if field.lower() not in _allowed_vals:
+            raise ValueError(f"The Type field must be one of: coach, formation, startxi, substitutes.")
+
