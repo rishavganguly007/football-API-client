@@ -4,6 +4,7 @@ from http.client import HTTPException
 import requests
 import logging
 
+from footballAPIClient.Exceptions.InvalidApiKeyError import InvalidApiKeyError
 from footballAPIClient.Exceptions.MissingParametersError import MissingParametersError
 from footballAPIClient.Exceptions.ApiKeyMissingError import ApiKeyMissingError
 from footballAPIClient.helpers.ParameterValidator import ParameterValidator
@@ -56,7 +57,10 @@ class FootballAPI:
 
     def _update_credit(self):
         self._logger.info("Updating credits")
-        data = self.get_status()
+        try:
+            data = self.get_status()
+        except Exception as e:
+            raise
         self._max_credit = data["response"]["requests"]["limit_day"]
         current_used_credit = data["response"]["requests"]["current"] + 1  # as a fail-safe situation added 1
         self._available_credit = self._max_credit - current_used_credit
@@ -257,7 +261,10 @@ class FootballAPI:
         Note: This call does not count against the daily quota.
         :return: Returns the status json schema
         """
-        return self._get('status')
+        data = self._get('status')
+        if data["errors"]:
+            raise InvalidApiKeyError(data["errors"]["token"])
+        return data
 
     def get_countries(self, name: str = None, code: str = None, search: str = None):
         """
