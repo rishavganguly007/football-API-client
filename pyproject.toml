@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "footballAPIClient"
-version = "0.0.3"
+version = "0.0.4"
 description = "Python Binding (API wrapper) for the Football API."
 authors = ["Rishav Ganguly <rishav.ganguly07@gmail.com>"]
 readme = "README.md"
