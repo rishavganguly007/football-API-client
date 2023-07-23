@@ -4,7 +4,7 @@ from http.client import HTTPException
 import requests
 import logging
 
-from footballAPIClient.Exceptions.InvalidApiKeyError import InvalidApiKeyError
+from footballAPIClient.Exceptions.InternalApiException import InternalApiException
 from footballAPIClient.Exceptions.MissingParametersError import MissingParametersError
 from footballAPIClient.Exceptions.ApiKeyMissingError import ApiKeyMissingError
 from footballAPIClient.helpers.ParameterValidator import ParameterValidator
@@ -263,7 +263,7 @@ class FootballAPI:
         """
         data = self._get('status')
         if data["errors"]:
-            raise InvalidApiKeyError(data["errors"]["token"])
+            raise InternalApiException(data["errors"])
         return data
 
     def get_countries(self, name: str = None, code: str = None, search: str = None):
