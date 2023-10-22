@@ -61,6 +61,24 @@ Output:
 }
 
 
+## Development
+- Each PR should have a corresponding issue available in issue tracker of repository.
+- To raise a PR, fork **football-API-client** 
+- Clone the project in your local machine
+```
+git clone https://github.com/rishavganguly007/football-API-client.git
+cd football-API-client
+```
 
+- Install requirements of project into virtual environment.
+```python
+poetry install   # Poetry creates a virtual environment in your local
+# NOTE: If poetry is not set in your $PATH variable you can use
+# pip install poetry
+```
 
+- To run the test framework you can use
+```python
+poetry install --with test
+```
 
