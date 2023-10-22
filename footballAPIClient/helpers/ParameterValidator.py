@@ -51,12 +51,12 @@ class ParameterValidator:
 
     @staticmethod
     def validate_search_field(search: str):
-        if len(search) >= 3:
+        if len(search) <= 3:
             raise ValueError(" Search field must have at least 3 characters")
 
     @staticmethod
     def validate_player_search_field(search):
-        if len(search) >= 4:
+        if len(search) <= 4:
             raise ValueError(" Search field must have at least 4 characters")
 
     @staticmethod

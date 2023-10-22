@@ -1,1 +1,4 @@
 /.pypirc
+/**/__pycache__/
+coverage.xml
+**/.coverage
